@@ -86,8 +86,12 @@ scandoubler scandoubler(
 	.b_out(sd_b)
 );
 
-osd #(10'd0, 10'd0, 3'd4) osd(
+osd osd(
 	.*,
+	.OSD_X_OFFSET(scandoubler_disable ? 10'd0 : -10'd36),
+	.OSD_Y_OFFSET(10'd0),
+	.OSD_COLOR(3'd4),
+	.scandoubler_disable(scandoubler_disable),
 	.clk_pix(scandoubler_disable ? clk_12 : clk_pix),
 	.OSD_VS(scandoubler_disable ? ~VSync : ~sd_vs),
 	.OSD_HS(scandoubler_disable ? ~HSync : ~sd_hs)

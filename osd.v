@@ -5,6 +5,11 @@ module osd (
 	// OSDs pixel clock, should be synchronous to cores pixel clock to
 	// avoid jitter.
 	input 		 clk_pix,
+	input        scandoubler_disable,
+
+	input  [9:0] OSD_X_OFFSET,
+	input  [9:0] OSD_Y_OFFSET,
+	input  [9:0] OSD_COLOR,
 
 	// SPI interface
 	input        SPI_SCK,
@@ -12,9 +17,9 @@ module osd (
 	input        SPI_DI,
 
 	// VGA signals coming from core
-	input [5:0]  VGA_Rx,
-	input [5:0]  VGA_Gx,
-	input [5:0]  VGA_Bx,
+	input  [5:0] VGA_Rx,
+	input  [5:0] VGA_Gx,
+	input  [5:0] VGA_Bx,
 	input        OSD_HS,
 	input        OSD_VS,
 	
@@ -24,12 +29,10 @@ module osd (
 	output [5:0] VGA_B
 );
 
-parameter OSD_X_OFFSET = 10'd0;
-parameter OSD_Y_OFFSET = 10'd0;
-parameter OSD_COLOR    = 3'd0;
-
 localparam OSD_WIDTH  = 10'd256;
-localparam OSD_HEIGHT = 10'd128;
+localparam OSD_HEIGHT = 10'd256;
+
+wire [9:0] osd_height = OSD_HEIGHT >> scandoubler_disable;
 
 // *********************************************************************************
 // spi client
@@ -136,10 +139,10 @@ end
 // area in which OSD is being displayed
 wire [9:0] h_osd_start = ((dsp_width - OSD_WIDTH)>> 1) + OSD_X_OFFSET;
 wire [9:0] h_osd_end   = h_osd_start + OSD_WIDTH;
-wire [9:0] v_osd_start = ((dsp_height- OSD_HEIGHT)>> 1) + OSD_Y_OFFSET;
-wire [9:0] v_osd_end   = v_osd_start + OSD_HEIGHT;
+wire [9:0] v_osd_start = ((dsp_height- osd_height)>> 1) + OSD_Y_OFFSET;
+wire [9:0] v_osd_end   = v_osd_start + osd_height;
 wire [9:0] osd_hcnt    = h_cnt - h_osd_start + 7'd1;  // one pixel offset for osd_byte register
-wire [9:0] osd_vcnt    = v_cnt - v_osd_start;
+wire [9:0] osd_vcnt    = (v_cnt - v_osd_start) >> !scandoubler_disable;
 
 wire osd_de = osd_enable && 
               (OSD_HS != hs_pol) && (h_cnt >= h_osd_start) && (h_cnt < h_osd_end) &&
