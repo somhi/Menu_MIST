@@ -76,7 +76,7 @@ always @(posedge clk_x2) begin
 	   g_out <= { 1'b0, sd_out[11:7] };
 	   b_out <= { 1'b0, sd_out[5:1] };
 	end
-	
+
 	2'b11: begin // reduce 75% = 1/4
 	   r_out <= { 2'b00, sd_out[17:14] };
 	   g_out <= { 2'b00, sd_out[11:8] };
@@ -94,7 +94,7 @@ reg [17:0]  sd_out;
 // ==================================================================
 
 // 2 lines of 1024 pixels 3*6 bit RGB
-reg [17:0] sd_buffer [2047:0];
+(* ramstyle = "no_rw_check" *) reg [17:0] sd_buffer [2047:0];
 
 // use alternating sd_buffers when storing/reading data   
 reg vsD;

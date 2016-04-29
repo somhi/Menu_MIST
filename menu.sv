@@ -9,59 +9,24 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-module MENU(
-   input  wire [1:0]  CLOCK_27,            // Input clock 27 MHz
+module MENU
+(
+   input         CLOCK_27,   // Input clock 27 MHz
 
-   output wire [5:0]  VGA_R,
-   output wire [5:0]  VGA_G,
-   output wire [5:0]  VGA_B,
-   output wire        VGA_HS,
-   output wire        VGA_VS,
-	 
-   output wire        LED,
+   output  [5:0] VGA_R,
+   output  [5:0] VGA_G,
+   output  [5:0] VGA_B,
+   output        VGA_HS,
+   output        VGA_VS,
 
-   output wire        AUDIO_L,
-   output wire        AUDIO_R,
+   output        LED,
 
-   input  wire        SPI_SCK,
-   output wire        SPI_DO,
-   input  wire        SPI_DI,
-   input  wire        SPI_SS2,
-   input  wire        SPI_SS3,
-   input  wire        SPI_SS4,
-   input  wire        CONF_DATA0,
-
-   output wire [12:0] SDRAM_A,
-   inout  wire [15:0] SDRAM_DQ,
-   output wire        SDRAM_DQML,
-   output wire        SDRAM_DQMH,
-   output wire        SDRAM_nWE,
-   output wire        SDRAM_nCAS,
-   output wire        SDRAM_nRAS,
-   output wire        SDRAM_nCS,
-   output wire [1:0]  SDRAM_BA,
-   output wire        SDRAM_CLK,
-   output wire        SDRAM_CKE
+   input         SPI_SCK,
+   output        SPI_DO,
+   input         SPI_DI,
+   input         SPI_SS3,
+   input         CONF_DATA0
 );
-
-//______________________________________________________________________________
-//
-// Clocks
-//
-
-wire clk_120mhz, clk_120mhzS, clk_24mhz, plock;
-
-pll pll(
-	.inclk0(CLOCK_27[0]),
-	.c0(clk_120mhz),  		//120MHz, 0 deg
-	.c1(clk_120mhzS),  		//120MHz, 60 deg
-	.c2(clk_24mhz),    		//24MHz
-	.locked(plock)
-);
-
-assign SDRAM_CLK = clk_120mhzS;
-wire   clk_ram   = clk_120mhz;
-wire   clk_pix   = clk_24mhz;
 
 //______________________________________________________________________________
 //
@@ -79,12 +44,97 @@ user_io #(.STRLEN(6)) user_io (
 	.scandoubler_disable(scandoubler_disable)
 );
 
-assign LED = 1'b1;
+assign LED = 1;
 
 //______________________________________________________________________________
 //
 // Video 
 //
 
-video video(.*);
+wire clk_x2, clk_pix;
+pll pll(CLOCK_27, clk_x2, clk_pix);
+
+reg  [9:0] hc;
+reg  [8:0] vc;
+reg  [9:0] vvc;
+
+reg [22:0] rnd_reg;
+wire [5:0] rnd_c = {rnd_reg[0],rnd_reg[1],rnd_reg[2],rnd_reg[2],rnd_reg[2],rnd_reg[2]};
+
+wire [22:0] rnd;
+lfsr random(rnd);
+
+always @(posedge clk_pix) begin
+	if(hc == 639) begin
+		hc <= 0;
+		if(vc == 311) begin 
+			vc <= 0;
+			vvc <= vvc + 9'd6;
+		end else begin
+			vc <= vc + 1'd1;
+		end
+	end else begin
+		hc <= hc + 1'd1;
+	end
+	
+	rnd_reg <= rnd;
+end
+
+reg  HBlank;
+reg  HSync;
+reg  VBlank;
+reg  VSync;
+wire viden  = !HBlank && !VBlank;
+
+always @(negedge clk_pix) begin
+	if (hc == 310) HBlank <= 1;
+		else if (hc == 440) HBlank <= 0;
+
+	if (hc == 336) HSync <= 1;
+		else if (hc == 368) HSync <= 0;
+
+	if(vc == 308) VSync <= 1;
+		else if (vc == 0) VSync <= 0;
+
+	if(vc == 306) VBlank <= 1;
+		else if (vc == 2) VBlank <= 0;
+end
+
+reg  [7:0] cos_out;
+wire [5:0] cos_g = cos_out[7:3]+6'd32;
+cos cos(vvc + {vc, 2'b00}, cos_out);
+
+wire [5:0] comp_v = (cos_g >= rnd_c) ? cos_g - rnd_c : 6'd0;
+wire [5:0] R_in = !viden ? 6'd0 : comp_v;
+wire [5:0] G_in = !viden ? 6'd0 : comp_v;
+wire [5:0] B_in = !viden ? 6'd0 : comp_v;
+
+wire [5:0] R_out, G_out, B_out;
+
+osd osd
+(
+	.*,
+	.OSD_X_OFFSET(10),
+	.OSD_Y_OFFSET(0),
+	.OSD_COLOR(4)
+);
+
+wire hs_out, vs_out;
+wire [5:0] r_out, g_out, b_out;
+
+scandoubler scandoubler
+(
+	.*,
+	.scanlines(2'b00),
+	.hs_in(HSync),
+	.vs_in(VSync),
+	.r_in(R_out),
+	.g_in(G_out),
+	.b_in(B_out)
+);
+
+assign {VGA_R, VGA_G, VGA_B, VGA_VS,  VGA_HS          } = scandoubler_disable ?
+       {R_out, G_out, B_out, 1'b1,    ~(HSync ^ VSync)} :
+       {r_out, g_out, b_out, ~vs_out, ~hs_out         };
+
 endmodule
