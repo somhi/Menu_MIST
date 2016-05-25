@@ -25,7 +25,30 @@ module MENU
    output        SPI_DO,
    input         SPI_DI,
    input         SPI_SS3,
-   input         CONF_DATA0
+   input         CONF_DATA0,
+
+   output [12:0] SDRAM_A,
+   inout  [15:0] SDRAM_DQ,
+   output        SDRAM_DQML,
+   output        SDRAM_DQMH,
+   output        SDRAM_nWE,
+   output        SDRAM_nCAS,
+   output        SDRAM_nRAS,
+   output        SDRAM_nCS,
+   output  [1:0] SDRAM_BA,
+   output        SDRAM_CLK,
+   output        SDRAM_CKE
+);
+
+wire clk_x2, clk_pix, clk_ram, locked;
+pll pll
+(
+	.inclk0(CLOCK_27),
+	.c0(clk_ram),
+	.c1(SDRAM_CLK),
+	.c2(clk_x2),
+	.c3(clk_pix),
+	.locked(locked)
 );
 
 //______________________________________________________________________________
@@ -34,7 +57,8 @@ module MENU
 //
 wire		   scandoubler_disable;
 
-user_io #(.STRLEN(6)) user_io (
+user_io #(.STRLEN(6)) user_io
+(
 	.conf_str("MENU;;"),
 	
 	.SPI_SCK(SPI_SCK),
@@ -46,13 +70,37 @@ user_io #(.STRLEN(6)) user_io (
 
 assign LED = 1;
 
+sram ram
+(
+	.*,
+	.init(~locked),
+	.clk(clk_ram),
+	.wtbt(3),
+	.dout(),
+	.din(0),
+	.rd(0),
+	.ready()
+);
+
+reg        we;
+reg [24:0] addr = 0;
+
+always @(posedge clk_ram) begin
+	integer   init = 5000000;
+	reg [4:0] cnt = 9;
+	
+	if(init) init <= init - 1;
+	else begin
+		cnt <= cnt + 1'b1;
+		we <= &cnt;
+		if(cnt == 8) addr <= addr + 1'd1;
+	end
+end
+
 //______________________________________________________________________________
 //
 // Video 
 //
-
-wire clk_x2, clk_pix;
-pll pll(CLOCK_27, clk_x2, clk_pix);
 
 reg  [9:0] hc;
 reg  [8:0] vc;
