@@ -18,9 +18,11 @@
 
 // TODO: Delay vsync one line
 
-module scandoubler (
+module scandoubler
+(
   // system interface
   input 	          clk_x2,
+  input 	          clk_pix,
 
   // scanlines (00-none 01-25% 10-50% 11-75%)
   input [1:0] 	    scanlines,
@@ -39,9 +41,6 @@ module scandoubler (
   output reg [5:0] g_out,
   output reg [5:0] b_out
 );
-
-reg clk;
-always @(posedge clk_x2) clk <= ~clk;
 
 // --------------------- create output signals -----------------
 // latch everything once more to make it glitch free and apply scanline effect
@@ -99,7 +98,7 @@ reg [17:0]  sd_out;
 // use alternating sd_buffers when storing/reading data   
 reg vsD;
 reg line_toggle;
-always @(negedge clk) begin
+always @(negedge clk_pix) begin
    vsD <= vs_in;
 
    if(vsD != vs_in) 
@@ -110,7 +109,7 @@ always @(negedge clk) begin
      line_toggle <= !line_toggle;
 end
    
-always @(negedge clk)
+always @(negedge clk_pix)
    sd_buffer[{line_toggle, hcnt}] <= { r_in, g_in, b_in };
    
 // ==================================================================
@@ -123,7 +122,7 @@ reg [9:0] hs_rise;
 reg [9:0] hcnt;
 reg hsD;
    
-always @(negedge clk) begin
+always @(negedge clk_pix) begin
    hsD <= hs_in;
 
    // falling edge of hsync indicates start of line

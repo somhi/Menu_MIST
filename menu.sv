@@ -112,7 +112,7 @@ wire [5:0] rnd_c = {rnd_reg[0],rnd_reg[1],rnd_reg[2],rnd_reg[2],rnd_reg[2],rnd_r
 wire [22:0] rnd;
 lfsr random(rnd);
 
-always @(posedge clk_pix) begin
+always @(negedge clk_pix) begin
 	if(hc == 639) begin
 		hc <= 0;
 		if(vc == 311) begin 
@@ -134,7 +134,7 @@ reg  VBlank;
 reg  VSync;
 wire viden  = !HBlank && !VBlank;
 
-always @(negedge clk_pix) begin
+always @(posedge clk_pix) begin
 	if (hc == 310) HBlank <= 1;
 		else if (hc == 440) HBlank <= 0;
 
