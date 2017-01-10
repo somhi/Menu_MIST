@@ -56,6 +56,7 @@ pll pll
 // MIST ARM I/O
 //
 wire		   scandoubler_disable;
+wire		   ypbpr;
 
 user_io #(.STRLEN(6)) user_io
 (
@@ -65,7 +66,8 @@ user_io #(.STRLEN(6)) user_io
 	.CONF_DATA0(CONF_DATA0),
 	.SPI_DO(SPI_DO),
 	.SPI_DI(SPI_DI),
-	.scandoubler_disable(scandoubler_disable)
+	.scandoubler_disable(scandoubler_disable),
+	.ypbpr(ypbpr)
 );
 
 assign LED = 1;
@@ -136,7 +138,7 @@ wire viden  = !HBlank && !VBlank;
 
 always @(posedge clk_pix) begin
 	if (hc == 310) HBlank <= 1;
-		else if (hc == 440) HBlank <= 0;
+		else if (hc == 420) HBlank <= 0;
 
 	if (hc == 336) HSync <= 1;
 		else if (hc == 368) HSync <= 0;
@@ -181,8 +183,22 @@ scandoubler scandoubler
 	.b_in(B_out)
 );
 
-assign {VGA_R, VGA_G, VGA_B, VGA_VS,  VGA_HS          } = scandoubler_disable ?
-       {R_out, G_out, B_out, 1'b1,    ~(HSync ^ VSync)} :
-       {r_out, g_out, b_out, ~vs_out, ~hs_out         };
+video_mixer video_mixer
+(
+	.*,
+	.ypbpr_full(1),
+
+	.r_i({R_out, R_out[5:4]}),
+	.g_i({G_out, G_out[5:4]}),
+	.b_i({B_out, B_out[5:4]}),
+	.hsync_i(HSync),
+	.vsync_i(VSync),
+
+	.r_p({r_out, r_out[5:4]}),
+	.g_p({g_out, g_out[5:4]}),
+	.b_p({b_out, b_out[5:4]}),
+	.hsync_p(hs_out),
+	.vsync_p(vs_out)
+);
 
 endmodule
