@@ -24,6 +24,7 @@ module MENU
    input         SPI_SCK,
    output        SPI_DO,
    input         SPI_DI,
+   input         SPI_SS2,
    input         SPI_SS3,
    input         CONF_DATA0,
 
@@ -40,17 +41,21 @@ module MENU
    output        SDRAM_CKE
 );
 
-wire clk_x2, clk_pix, clk_ram, locked;
+`define LINE_MAX 312
+//`define LINE_MAX 262
+
+wire clk_x2, clk_pix, clk_ram, pll_locked;
 pll pll
 (
 	.inclk0(CLOCK_27),
 	.c0(clk_ram),
 	.c2(clk_x2),
 	.c3(clk_pix),
-	.locked(locked)
+	.locked(pll_locked)
 );
 
 assign SDRAM_CLK = clk_ram;
+assign SDRAM_CKE = 1;
 //______________________________________________________________________________
 //
 // MIST ARM I/O
@@ -59,7 +64,7 @@ wire		   scandoubler_disable;
 wire		   ypbpr;
 wire           no_csync;
 
-user_io #(.STRLEN(6)) user_io
+user_io #(.STRLEN(6), .FEATURES(32'd1)) user_io
 (
 	.clk_sys(clk_x2),
 	.conf_str("MENU;;"),
@@ -73,34 +78,81 @@ user_io #(.STRLEN(6)) user_io
 	.no_csync(no_csync)
 );
 
-assign LED = 1;
+assign LED = ~ioctl_downl;
 
-sram ram
-(
-	.*,
-	.init(~locked),
-	.clk(clk_ram),
-	.wtbt(3),
-	.dout(),
-	.din(0),
-	.rd(0),
-	.ready()
+wire        ioctl_downl;
+wire        ioctl_upl;
+wire  [7:0] ioctl_index;
+wire        ioctl_wr;
+wire [24:0] ioctl_addr;
+wire  [7:0] ioctl_din;
+wire  [7:0] ioctl_dout;
+
+data_io data_io(
+	.clk_sys       ( clk_ram      ),
+	.SPI_SCK       ( SPI_SCK      ),
+	.SPI_SS2       ( SPI_SS2      ),
+	.SPI_DI        ( SPI_DI       ),
+	.SPI_DO        ( SPI_DO       ),
+	.ioctl_download( ioctl_downl  ),
+	.ioctl_upload  ( ioctl_upl    ),
+	.ioctl_index   ( ioctl_index  ),
+	.ioctl_wr      ( ioctl_wr     ),
+	.ioctl_addr    ( ioctl_addr   ),
+	.ioctl_din     ( ioctl_din    ),
+	.ioctl_dout    ( ioctl_dout   )
 );
 
-reg        we;
-reg [24:0] addr = 0;
+reg  [23:0] bmp_data_start;
+wire [23:0] downl_addr = ioctl_addr - bmp_data_start;
+reg         bmp_loaded = 0;
+reg         port1_req;
 
 always @(posedge clk_ram) begin
-	integer   init = 5000000;
-	reg [4:0] cnt = 9;
-	
-	if(init) init <= init - 1;
-	else begin
-		cnt <= cnt + 1'b1;
-		we <= &cnt;
-		if(cnt == 8) addr <= addr + 1'd1;
+	reg        ioctl_wr_last = 0;
+	reg        ioctl_downl_last = 0;
+
+	ioctl_wr_last <= ioctl_wr;
+	ioctl_downl_last <= ioctl_downl;
+
+	if (ioctl_downl) begin
+		if (~ioctl_wr_last & ioctl_wr) begin
+			if (ioctl_addr == 10) bmp_data_start[7:0] <= ioctl_dout;
+			else if (ioctl_addr == 11) bmp_data_start[15:8] <= ioctl_dout;
+			else if (ioctl_addr == 12) bmp_data_start[23:16] <= ioctl_dout;
+			port1_req <= ~port1_req;
+		end
 	end
+	if (ioctl_downl_last & ~ioctl_downl) bmp_loaded <= 1;
 end
+
+wire [31:0] cpu_q;
+wire [23:0] cpu1_addr;
+
+always @(posedge clk_ram) begin
+	cpu1_addr <= (((`LINE_MAX-1-vc)<<9)+hc)<<2;
+end
+
+sdram #(.MHZ(80)) sdram(
+	.*,
+	.init_n        ( pll_locked   ),
+	.clk           ( clk_ram      ),
+	.clkref        ( ),
+
+	// ROM upload
+	.port1_req     ( port1_req    ),
+	.port1_ack     ( ),
+	.port1_a       ( downl_addr[23:1] ),
+	.port1_ds      ( {downl_addr[0], ~downl_addr[0]} ),
+	.port1_we      ( ioctl_downl ),
+	.port1_d       ( {ioctl_dout, ioctl_dout} ),
+	.port1_q       (  ),
+
+	// CPU/video access
+	.cpu1_addr     ( cpu1_addr[23:2] ),
+	.cpu1_q        ( cpu_q ),
+	.cpu1_oe       ( ~ioctl_downl )
+);
 
 //______________________________________________________________________________
 //
@@ -120,7 +172,7 @@ lfsr random(rnd);
 always @(posedge clk_pix) begin
 	if(hc == 639) begin
 		hc <= 0;
-		if(vc == 311) begin 
+		if(vc == `LINE_MAX-1) begin 
 			vc <= 0;
 			vvc <= vvc + 9'd6;
 		end else begin
@@ -140,27 +192,35 @@ reg  VSync;
 wire viden  = !HBlank && !VBlank;
 
 always @(posedge clk_pix) begin
-	if (hc == 310) HBlank <= 1;
-		else if (hc == 420) HBlank <= 0;
+	if (hc == 511) HBlank <= 1;
+		else if (hc == 639) HBlank <= 0;
 
-	if (hc == 336) HSync <= 1;
-		else if (hc == 368) HSync <= 0;
+	if (hc == 545) HSync <= 1;
+		else if (hc == 577) HSync <= 0;
 
-	if(vc == 308) VSync <= 1;
+	if(vc == `LINE_MAX-3) VSync <= 1;
 		else if (vc == 0) VSync <= 0;
 
-	if(vc == 306) VBlank <= 1;
+	if(vc == `LINE_MAX-5) VBlank <= 1;
 		else if (vc == 2) VBlank <= 0;
 end
 
+///// Noise
 reg  [7:0] cos_out;
 wire [5:0] cos_g = cos_out[7:3]+6'd32;
 cos cos(vvc + {vc, 2'b00}, cos_out);
 
 wire [5:0] comp_v = (cos_g >= rnd_c) ? cos_g - rnd_c : 6'd0;
-wire [5:0] R_in = !viden ? 6'd0 : comp_v;
-wire [5:0] G_in = !viden ? 6'd0 : comp_v;
-wire [5:0] B_in = !viden ? 6'd0 : comp_v;
+
+///// Bitmap
+wire [5:0] bmp_r = cpu_q[23:18];
+wire [5:0] bmp_g = cpu_q[15:10];
+wire [5:0] bmp_b = cpu_q[7:2];
+
+///// Final pixel value
+wire [5:0] R_in = !viden ? 6'd0 : bmp_loaded ? bmp_r : comp_v;
+wire [5:0] G_in = !viden ? 6'd0 : bmp_loaded ? bmp_g : comp_v;
+wire [5:0] B_in = !viden ? 6'd0 : bmp_loaded ? bmp_b : comp_v;
 
 mist_video #(
 	.COLOR_DEPTH(6),
@@ -183,7 +243,7 @@ mist_video #(
 	.VGA_B          ( VGA_B            ),
 	.VGA_VS         ( VGA_VS           ),
 	.VGA_HS         ( VGA_HS           ),
-	.ce_divider     ( 1'b0             ),
+	.ce_divider     ( 1'b1             ),
 	.rotate         ( 2'b00            ),
 	.blend          ( 1'b0             ),
 	.scandoubler_disable( scandoubler_disable ),
