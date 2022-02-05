@@ -4,7 +4,7 @@
 //
 //  MENU for MIST board
 //  (C) 2016 Sorgelig
-//
+//  (C) 2022 Slingshot
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,29 +45,32 @@ pll pll
 (
 	.inclk0(CLOCK_27),
 	.c0(clk_ram),
-	.c1(SDRAM_CLK),
 	.c2(clk_x2),
 	.c3(clk_pix),
 	.locked(locked)
 );
 
+assign SDRAM_CLK = clk_ram;
 //______________________________________________________________________________
 //
 // MIST ARM I/O
 //
 wire		   scandoubler_disable;
 wire		   ypbpr;
+wire           no_csync;
 
 user_io #(.STRLEN(6)) user_io
 (
+	.clk_sys(clk_x2),
 	.conf_str("MENU;;"),
 	
-	.SPI_SCK(SPI_SCK),
-	.CONF_DATA0(CONF_DATA0),
-	.SPI_DO(SPI_DO),
-	.SPI_DI(SPI_DI),
+	.SPI_CLK(SPI_SCK),
+	.SPI_SS_IO(CONF_DATA0),
+	.SPI_MISO(SPI_DO),
+	.SPI_MOSI(SPI_DI),
 	.scandoubler_disable(scandoubler_disable),
-	.ypbpr(ypbpr)
+	.ypbpr(ypbpr),
+	.no_csync(no_csync)
 );
 
 assign LED = 1;
@@ -114,7 +117,7 @@ wire [5:0] rnd_c = {rnd_reg[0],rnd_reg[1],rnd_reg[2],rnd_reg[2],rnd_reg[2],rnd_r
 wire [22:0] rnd;
 lfsr random(rnd);
 
-always @(negedge clk_pix) begin
+always @(posedge clk_pix) begin
 	if(hc == 639) begin
 		hc <= 0;
 		if(vc == 311) begin 
@@ -159,46 +162,34 @@ wire [5:0] R_in = !viden ? 6'd0 : comp_v;
 wire [5:0] G_in = !viden ? 6'd0 : comp_v;
 wire [5:0] B_in = !viden ? 6'd0 : comp_v;
 
-wire [5:0] R_out, G_out, B_out;
-
-osd osd
-(
-	.*,
+mist_video #(
+	.COLOR_DEPTH(6),
+	.SD_HCNT_WIDTH(10),
 	.OSD_X_OFFSET(10),
 	.OSD_Y_OFFSET(0),
 	.OSD_COLOR(4)
-);
-
-wire hs_out, vs_out;
-wire [5:0] r_out, g_out, b_out;
-
-scandoubler scandoubler
-(
-	.*,
-	.scanlines(2'b00),
-	.hs_in(HSync),
-	.vs_in(VSync),
-	.r_in(R_out),
-	.g_in(G_out),
-	.b_in(B_out)
-);
-
-video_mixer video_mixer
-(
-	.*,
-	.ypbpr_full(1),
-
-	.r_i({R_out, R_out[5:4]}),
-	.g_i({G_out, G_out[5:4]}),
-	.b_i({B_out, B_out[5:4]}),
-	.hsync_i(HSync),
-	.vsync_i(VSync),
-
-	.r_p({r_out, r_out[5:4]}),
-	.g_p({g_out, g_out[5:4]}),
-	.b_p({b_out, b_out[5:4]}),
-	.hsync_p(hs_out),
-	.vsync_p(vs_out)
-);
+) mist_video (
+	.clk_sys        ( clk_x2           ),
+	.SPI_SCK        ( SPI_SCK          ),
+	.SPI_SS3        ( SPI_SS3          ),
+	.SPI_DI         ( SPI_DI           ),
+	.R              ( R_in             ),
+	.G              ( G_in             ),
+	.B              ( B_in             ),
+	.HSync          ( ~HSync           ),
+	.VSync          ( ~VSync           ),
+	.VGA_R          ( VGA_R            ),
+	.VGA_G          ( VGA_G            ),
+	.VGA_B          ( VGA_B            ),
+	.VGA_VS         ( VGA_VS           ),
+	.VGA_HS         ( VGA_HS           ),
+	.ce_divider     ( 1'b0             ),
+	.rotate         ( 2'b00            ),
+	.blend          ( 1'b0             ),
+	.scandoubler_disable( scandoubler_disable ),
+	.scanlines      ( 2'b00            ),
+	.ypbpr          ( ypbpr            ),
+	.no_csync       ( no_csync         )
+	);
 
 endmodule
