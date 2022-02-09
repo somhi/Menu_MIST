@@ -192,11 +192,11 @@ reg  VSync;
 wire viden  = !HBlank && !VBlank;
 
 always @(posedge clk_pix) begin
-	if (hc == 511) HBlank <= 1;
-		else if (hc == 639) HBlank <= 0;
+	if (hc == 513) HBlank <= 1;
+		else if (hc == 1) HBlank <= 0;
 
-	if (hc == 545) HSync <= 1;
-		else if (hc == 577) HSync <= 0;
+	if (hc == 535) HSync <= 1;
+		else if (hc == 567) HSync <= 0;
 
 	if(vc == `LINE_MAX-3) VSync <= 1;
 		else if (vc == 0) VSync <= 0;
