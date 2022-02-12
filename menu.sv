@@ -41,9 +41,6 @@ module MENU
    output        SDRAM_CKE
 );
 
-`define LINE_MAX 312
-//`define LINE_MAX 262
-
 wire clk_x2, clk_pix, clk_ram, pll_locked;
 pll pll
 (
@@ -60,23 +57,37 @@ assign SDRAM_CKE = 1;
 //
 // MIST ARM I/O
 //
+
+localparam CONF_STR = {
+	"MENU;;",
+	"O1,Video mode,PAL,NTSC;",
+	"O23,Rotate,Off,Left,Right;"
+};
+
 wire		   scandoubler_disable;
 wire		   ypbpr;
 wire           no_csync;
+wire    [63:0] status;
 
-user_io #(.STRLEN(6), .FEATURES(32'd1)) user_io
+user_io #(.STRLEN($size(CONF_STR)>>3), .FEATURES(32'd1)) user_io
 (
 	.clk_sys(clk_x2),
-	.conf_str("MENU;;"),
-	
+	.conf_str(CONF_STR),
+
 	.SPI_CLK(SPI_SCK),
 	.SPI_SS_IO(CONF_DATA0),
 	.SPI_MISO(SPI_DO),
 	.SPI_MOSI(SPI_DI),
+	.status(status),
 	.scandoubler_disable(scandoubler_disable),
 	.ypbpr(ypbpr),
 	.no_csync(no_csync)
 );
+
+wire        ntsc = status[1];
+wire  [1:0] rotate = status[3:2];
+
+wire  [8:0] line_max = ntsc ? 9'd262 : 9'd312;
 
 assign LED = ~ioctl_downl;
 
@@ -130,7 +141,7 @@ wire [31:0] cpu_q;
 wire [23:0] cpu1_addr;
 
 always @(posedge clk_ram) begin
-	cpu1_addr <= (((`LINE_MAX-1-vc)<<9)+hc)<<2;
+	cpu1_addr <= (((line_max-1'd1-vc)<<9)+hc)<<2;
 end
 
 sdram #(.MHZ(80)) sdram(
@@ -172,7 +183,7 @@ lfsr random(rnd);
 always @(posedge clk_pix) begin
 	if(hc == 639) begin
 		hc <= 0;
-		if(vc == `LINE_MAX-1) begin 
+		if(vc == line_max-1) begin
 			vc <= 0;
 			vvc <= vvc + 9'd6;
 		end else begin
@@ -198,10 +209,10 @@ always @(posedge clk_pix) begin
 	if (hc == 535) HSync <= 1;
 		else if (hc == 567) HSync <= 0;
 
-	if(vc == `LINE_MAX-3) VSync <= 1;
+	if(vc == line_max-3) VSync <= 1;
 		else if (vc == 0) VSync <= 0;
 
-	if(vc == `LINE_MAX-5) VBlank <= 1;
+	if(vc == line_max-5) VBlank <= 1;
 		else if (vc == 2) VBlank <= 0;
 end
 
@@ -244,7 +255,7 @@ mist_video #(
 	.VGA_VS         ( VGA_VS           ),
 	.VGA_HS         ( VGA_HS           ),
 	.ce_divider     ( 1'b1             ),
-	.rotate         ( 2'b00            ),
+	.rotate         ( {rotate[0], |rotate} ),
 	.blend          ( 1'b0             ),
 	.scandoubler_disable( scandoubler_disable ),
 	.scanlines      ( 2'b00            ),
