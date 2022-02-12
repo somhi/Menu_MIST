@@ -22,10 +22,11 @@ module MENU
    output        LED,
 
    input         SPI_SCK,
-   output        SPI_DO,
+   inout         SPI_DO,
    input         SPI_DI,
    input         SPI_SS2,
    input         SPI_SS3,
+   input         SPI_SS4,
    input         CONF_DATA0,
 
    output [12:0] SDRAM_A,
@@ -69,7 +70,7 @@ wire		   ypbpr;
 wire           no_csync;
 wire    [63:0] status;
 
-user_io #(.STRLEN($size(CONF_STR)>>3), .FEATURES(32'd1)) user_io
+user_io #(.STRLEN($size(CONF_STR)>>3), .FEATURES(32'd1), .ROM_DIRECT_UPLOAD(1'b1)) user_io
 (
 	.clk_sys(clk_x2),
 	.conf_str(CONF_STR),
@@ -99,10 +100,11 @@ wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_din;
 wire  [7:0] ioctl_dout;
 
-data_io data_io(
+data_io #(.ROM_DIRECT_UPLOAD(1'b1)) data_io(
 	.clk_sys       ( clk_ram      ),
 	.SPI_SCK       ( SPI_SCK      ),
 	.SPI_SS2       ( SPI_SS2      ),
+	.SPI_SS4       ( SPI_SS4      ),
 	.SPI_DI        ( SPI_DI       ),
 	.SPI_DO        ( SPI_DO       ),
 	.ioctl_download( ioctl_downl  ),

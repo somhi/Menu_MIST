@@ -65,6 +65,7 @@ set_location_assignment PIN_88 -to SPI_DI
 set_location_assignment PIN_126 -to SPI_SCK
 set_location_assignment PIN_127 -to SPI_SS2
 set_location_assignment PIN_91 -to SPI_SS3
+set_location_assignment PIN_90 -to SPI_SS4
 set_location_assignment PIN_13 -to CONF_DATA0
 set_location_assignment PIN_49 -to SDRAM_A[0]
 set_location_assignment PIN_44 -to SDRAM_A[1]
@@ -300,7 +301,6 @@ set_location_assignment PLL_1 -to "pll:pll|altpll:altpll_component"
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name SYSTEMVERILOG_FILE menu.sv
 set_global_assignment -name QIP_FILE "mist-modules/mist.qip"
 set_global_assignment -name SYSTEMVERILOG_FILE sdram.sv
@@ -308,3 +308,4 @@ set_global_assignment -name VERILOG_FILE lfsr.v
 set_global_assignment -name SYSTEMVERILOG_FILE cos.sv
 set_global_assignment -name VERILOG_FILE pll.v
 set_global_assignment -name SIGNALTAP_FILE output_files/sdram.stp
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
