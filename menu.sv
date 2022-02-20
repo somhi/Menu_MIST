@@ -8,7 +8,6 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-
 module MENU
 (
    input         CLOCK_27,   // Input clock 27 MHz
@@ -58,11 +57,13 @@ assign SDRAM_CKE = 1;
 //
 // MIST ARM I/O
 //
+`include "build_id.v"
 
 localparam CONF_STR = {
 	"MENU;;",
 	"O1,Video mode,PAL,NTSC;",
-	"O23,Rotate,Off,Left,Right;"
+	"O23,Rotate,Off,Left,Right;",
+	"V,",`BUILD_DATE
 };
 
 wire		   scandoubler_disable;
