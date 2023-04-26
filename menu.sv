@@ -212,8 +212,8 @@ always @(posedge clk_pix) begin
 	if (hc == 535) HSync <= 1;
 		else if (hc == 567) HSync <= 0;
 
-	if(vc == line_max-3) VSync <= 1;
-		else if (vc == 0) VSync <= 0;
+	if(vc == line_max-3 && hc == 535) VSync <= 1;
+		else if (vc == 0 && hc == 567) VSync <= 0;
 
 	if(vc == line_max-5) VBlank <= 1;
 		else if (vc == 2) VBlank <= 0;
