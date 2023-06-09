@@ -87,6 +87,8 @@ set_location_assignment PIN_AA20 -to SRAM_OE
 set_location_assignment PIN_R2 -to SRAM_UB
 set_location_assignment PIN_AA16 -to SRAM_LB
 #
+set_location_assignment PIN_Y21 -to STM_RST_O
+#
 set_location_assignment PIN_V2 -to SDRAM_A[0]
 set_location_assignment PIN_V1 -to SDRAM_A[1]
 set_location_assignment PIN_U2 -to SDRAM_A[2]
