@@ -64,23 +64,25 @@ set_location_assignment PIN_B2 -to VGA_VS
 set_location_assignment PIN_A3 -to AUDIO_L
 set_location_assignment PIN_B4 -to AUDIO_R
 #
-# set_location_assignment PIN_P22 -to SPI_SS3
-# set_location_assignment PIN_B22 -to SPI_DI
-# set_location_assignment PIN_AA14 -to SPI_DO
-# set_location_assignment PIN_N22 -to SPI_SCK
-# #set_location_assignment PIN_M19  -to PMOD4_D4
-# set_location_assignment PIN_U22 -to SPI_SS4
-# set_location_assignment PIN_C22 -to CONF_DATA0
-# set_location_assignment PIN_AB13 -to SPI_SS2
+# PMOD 4
+set_location_assignment PIN_P22 -to SPI_SS3
+set_location_assignment PIN_B22 -to SPI_DI
+set_location_assignment PIN_AA14 -to SPI_DO
+set_location_assignment PIN_N22 -to SPI_SCK
+#set_location_assignment PIN_M19  -to PMOD4_D4
+set_location_assignment PIN_U22 -to SPI_SS4
+set_location_assignment PIN_C22 -to CONF_DATA0
+set_location_assignment PIN_AB13 -to SPI_SS2
 #
-set_location_assignment PIN_F22 -to SPI_SS3
-set_location_assignment PIN_H21 -to SPI_DI
-set_location_assignment PIN_H22 -to SPI_DO
-set_location_assignment PIN_L22 -to SPI_SCK
-#set_location_assignment PIN_M22  -to PMOD3_D4
-set_location_assignment PIN_L21 -to SPI_SS4
-set_location_assignment PIN_J22 -to CONF_DATA0
-set_location_assignment PIN_F21 -to SPI_SS2
+# PMOD 3
+# set_location_assignment PIN_F22 -to SPI_SS3
+# set_location_assignment PIN_H21 -to SPI_DI
+# set_location_assignment PIN_H22 -to SPI_DO
+# set_location_assignment PIN_L22 -to SPI_SCK
+# #set_location_assignment PIN_M22  -to PMOD3_D4
+# set_location_assignment PIN_L21 -to SPI_SS4
+# set_location_assignment PIN_J22 -to CONF_DATA0
+# set_location_assignment PIN_F21 -to SPI_SS2
 #
 set_location_assignment PIN_A10 -to SRAM_WE
 set_location_assignment PIN_AA20 -to SRAM_OE
